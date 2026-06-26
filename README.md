@@ -59,6 +59,12 @@ Más allá de los requisitos, este proyecto incorpora:
 - **🔔 Sistema de toasts** y **💀 skeletons de carga** — feedback premium.
 - **🪄 Microinteracciones y transiciones** suaves con Framer Motion.
 - **🔑 Credenciales de prueba en acordeón clickeable** — autocompletan el login.
+- **🧪 Tests de seguridad automatizados** — los 7 escenarios críticos de la
+  matriz de seguridad están cubiertos por una suite con **Vitest + Supertest**;
+  se ejecutan con un solo comando contra la base real.
+- **🔭 Hoja de ruta de producción documentada** — se dejaron por escrito las
+  decisiones de arquitectura, secretos, concurrencia y calidad necesarias para
+  llevar el sistema a un entorno productivo real.
 
 > ⚠️ **Regla de oro del diferencial:** nada de lo anterior modifica la lógica de
 > seguridad ni los criterios evaluados. Es una capa **aditiva** sobre un núcleo
@@ -211,6 +217,12 @@ curl http://localhost:4000/api/v1/records?limit=5 \
 | USER intenta `POST /records` | 403 (y la UI ni muestra la opción) |
 | Inyectar `tenant_id` ajeno en el body | Ignorado (se usa el del servidor) |
 
+Cada escenario de la matriz no es solo documentación: fue escrito primero como
+caso de prueba y luego validado. La suite se construyó de forma **voluntaria**
+con **Vitest + Supertest** — sin que formara parte de los requisitos — porque
+automatizar la verificación de seguridad elimina la posibilidad de que un cambio
+futuro rompa silenciosamente el aislamiento entre tenants.
+
 Estos escenarios están **cubiertos por tests automatizados** (Vitest + Supertest):
 ```bash
 cd backend
@@ -221,7 +233,8 @@ npm test     # requiere la base de datos levantada (docker compose up -d)
 
 ## 🔭 Consideraciones de producción / próximos pasos
 
-Esta entrega es un *slice* funcional; en un entorno productivo evolucionaría así:
+Esta entrega es un *slice* funcional con **visión de producto**; en un entorno
+productivo evolucionaría así:
 
 - **Aislamiento a nivel de datos.** Reforzar la regla de negocio con *Row-Level
   Security* (Postgres) o, según escala, un esquema por tenant; y un *repository*

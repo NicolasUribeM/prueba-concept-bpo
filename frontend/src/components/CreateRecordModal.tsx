@@ -58,6 +58,7 @@ export function CreateRecordModal({ abierto, onCerrar, onCreado }: Props) {
       {abierto && (
         <motion.div
           className="modal-overlay"
+          data-lenis-prevent
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

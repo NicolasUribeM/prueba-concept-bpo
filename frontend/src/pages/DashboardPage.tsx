@@ -24,6 +24,7 @@ import { MetricCards } from '../components/MetricCards';
 import { Charts } from '../components/Charts';
 import { CreateRecordModal } from '../components/CreateRecordModal';
 import { SkeletonRow } from '../components/Skeleton';
+import { LoadingScreen } from '../components/LoadingScreen';
 import { useToast } from '../components/Toast';
 
 const POR_PAGINA = 20;
@@ -52,6 +53,7 @@ export function DashboardPage() {
   const [modalAbierto, setModalAbierto] = useState(false);
   const [anchos, setAnchos] = useState<number[]>(COLUMNAS.map((c) => c.w));
   const colRefs = useRef<(HTMLTableColElement | null)[]>([]);
+  const [primerRecordsListo, setPrimerRecordsListo] = useState(false);
 
   const busquedaDebounced = useDebounce(busqueda, 350);
   const esAdmin = user?.role === 'ADMIN';
@@ -69,7 +71,7 @@ export function DashboardPage() {
         limit: POR_PAGINA,
         offset: pagina * POR_PAGINA,
       })
-    );
+    ).then(() => setPrimerRecordsListo(true)); // marca el fin de la 1ª carga
   }, [dispatch, busquedaDebounced, sortBy, sortDir, pagina]);
 
   useEffect(() => {
@@ -140,10 +142,18 @@ export function DashboardPage() {
     navigate('/login');
   }
 
+  // Pantalla de carga intermedia: se muestra hasta que la PRIMERA carga de
+  // registros y las métricas estén listas, para no ver el panel armándose.
+  const listo = primerRecordsListo && stats !== null;
+
   // Distingue la carga inicial (muestra skeletons) de un refetch por
   // orden/paginación/búsqueda (mantiene los datos y solo muestra el spinner).
   const cargaInicial = loading && items.length === 0;
   const refrescando = loading && items.length > 0;
+
+  if (!listo) {
+    return <LoadingScreen tenantName={tenantName} />;
+  }
 
   return (
     <motion.div
@@ -202,7 +212,10 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className={`table-wrap ${refrescando ? 'is-refetching' : ''}`}>
+        <div
+          className={`table-wrap ${refrescando ? 'is-refetching' : ''}`}
+          data-lenis-prevent
+        >
           {/* Indicador de recarga suave: no quita los datos actuales, solo los
               atenúa y muestra una "bolita" mientras llega la nueva consulta. */}
           {refrescando && (

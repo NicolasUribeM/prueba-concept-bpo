@@ -16,3 +16,6 @@ npm-debug.log*
 # Sistema
 .DS_Store
 Thumbs.db
+
+# Config local de herramientas (no entra a la entrega)
+.claude/

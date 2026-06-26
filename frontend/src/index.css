@@ -245,61 +245,63 @@ h3 {
    (cada uno su propia órbita). La posición inicial y el desfase los pone el
    componente de forma aleatoria, por lo que se cruzan en puntos siempre
    diferentes sin apilarse en un solo lugar. Velocidad ágil (18-24s). */
+/* Velocidades ESTANDARIZADAS (40-46s) y recorridos de magnitud similar para
+   que ningún orbe se vea más rápido que otro. Movimiento medio-bajo: smooth. */
 .aurora__blob--1 {
   width: 460px;
   height: 460px;
   background: radial-gradient(circle, #2563eb, transparent 70%);
-  animation: wander1 29s ease-in-out infinite;
+  animation: wander1 42s ease-in-out infinite;
 }
 .aurora__blob--2 {
   width: 520px;
   height: 520px;
   background: radial-gradient(circle, #0ea5e9, transparent 70%);
-  animation: wander2 35s ease-in-out infinite;
+  animation: wander2 46s ease-in-out infinite;
 }
 .aurora__blob--3 {
   width: 400px;
   height: 400px;
   background: radial-gradient(circle, #6366f1, transparent 70%);
   opacity: 0.4;
-  animation: wander3 26s ease-in-out infinite;
+  animation: wander3 44s ease-in-out infinite;
 }
 .aurora__blob--4 {
   width: 380px;
   height: 380px;
   background: radial-gradient(circle, #1d4ed8, transparent 70%);
   opacity: 0.4;
-  animation: wander4 32s ease-in-out infinite;
+  animation: wander4 45s ease-in-out infinite;
 }
 
-/* Órbitas amplias que cruzan la pantalla (distintas entre sí para que no
-   coincidan en un único punto). */
+/* Órbitas de recorrido similar (~38vw máx) y 4 puntos suaves: misma "rapidez"
+   percibida en los cuatro orbes, sin tramos bruscos. */
 @keyframes wander1 {
   0%   { transform: translate(0, 0) scale(1); }
-  25%  { transform: translate(48vw, 22vh) scale(1.15); }
-  50%  { transform: translate(60vw, 58vh) scale(0.95); }
-  75%  { transform: translate(20vw, 40vh) scale(1.1); }
+  25%  { transform: translate(30vw, 18vh) scale(1.06); }
+  50%  { transform: translate(38vw, 38vh) scale(0.98); }
+  75%  { transform: translate(14vw, 26vh) scale(1.04); }
   100% { transform: translate(0, 0) scale(1); }
 }
 @keyframes wander2 {
   0%   { transform: translate(0, 0) scale(1); }
-  25%  { transform: translate(-50vw, 30vh) scale(1.1); }
-  50%  { transform: translate(-25vw, -45vh) scale(1.2); }
-  75%  { transform: translate(-55vw, -15vh) scale(0.95); }
+  25%  { transform: translate(-32vw, 20vh) scale(1.05); }
+  50%  { transform: translate(-16vw, -28vh) scale(1.08); }
+  75%  { transform: translate(-36vw, -10vh) scale(0.98); }
   100% { transform: translate(0, 0) scale(1); }
 }
 @keyframes wander3 {
   0%   { transform: translate(0, 0) scale(1); }
-  25%  { transform: translate(35vw, -40vh) scale(1.15); }
-  50%  { transform: translate(62vw, -10vh) scale(0.9); }
-  75%  { transform: translate(28vw, -50vh) scale(1.1); }
+  25%  { transform: translate(28vw, -26vh) scale(1.06); }
+  50%  { transform: translate(38vw, -8vh) scale(0.96); }
+  75%  { transform: translate(16vw, -32vh) scale(1.05); }
   100% { transform: translate(0, 0) scale(1); }
 }
 @keyframes wander4 {
   0%   { transform: translate(0, 0) scale(1); }
-  25%  { transform: translate(-40vw, 48vh) scale(1.1); }
-  50%  { transform: translate(-58vw, 18vh) scale(1.2); }
-  75%  { transform: translate(-18vw, 52vh) scale(0.95); }
+  25%  { transform: translate(-28vw, 30vh) scale(1.06); }
+  50%  { transform: translate(-38vw, 12vh) scale(1.08); }
+  75%  { transform: translate(-14vw, 32vh) scale(0.98); }
   100% { transform: translate(0, 0) scale(1); }
 }
 
@@ -321,8 +323,8 @@ h3 {
 }
 .loading-orbit {
   position: relative;
-  width: 76px;
-  height: 76px;
+  width: 64px;
+  height: 64px;
   display: grid;
   place-items: center;
 }
@@ -330,22 +332,9 @@ h3 {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.08);
+  border: 4px solid rgba(255, 255, 255, 0.07);
   border-top-color: var(--blue-bright);
-  border-right-color: var(--cyan);
-  animation: spin 0.9s cubic-bezier(0.6, 0.2, 0.4, 0.8) infinite;
-}
-.loading-core {
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--blue-bright), var(--blue-deep));
-  box-shadow: 0 0 24px var(--blue-glow);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-@keyframes pulse {
-  0%, 100% { transform: scale(0.85); opacity: 0.85; }
-  50% { transform: scale(1.05); opacity: 1; }
+  animation: spin 0.9s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
 }
 .loading-text {
   font-size: 14px;
@@ -760,10 +749,11 @@ h3 {
 }
 
 /* ---- Tabla ---- */
+/* Sin scroll interno: la tabla fluye en la página y el scroll suave (Lenis)
+   global la recorre de forma amigable. Solo conservamos overflow-x para las
+   columnas redimensionables. */
 .table-wrap {
   position: relative;
-  max-height: 62vh;
-  overflow-y: auto;
   overflow-x: auto;
   margin: 0 -20px;
   padding: 0 20px;
@@ -801,8 +791,6 @@ h3 {
 }
 /* Cabecera: fondo SÓLIDO (no transparente) y banda redondeada estilo iOS. */
 .records-table thead th {
-  position: sticky;
-  top: 0;
   background: #0e1828;
   text-align: left;
   padding: 12px 14px;

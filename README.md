@@ -209,6 +209,33 @@ curl http://localhost:4000/api/v1/records?limit=5 \
 | USER intenta `POST /records` | 403 (y la UI ni muestra la opción) |
 | Inyectar `tenant_id` ajeno en el body | Ignorado (se usa el del servidor) |
 
+Estos escenarios están **cubiertos por tests automatizados** (Vitest + Supertest):
+```bash
+cd backend
+npm test     # requiere la base de datos levantada (docker compose up -d)
+```
+
+---
+
+## 🔭 Consideraciones de producción / próximos pasos
+
+Esta entrega es un *slice* funcional; en un entorno productivo evolucionaría así:
+
+- **Aislamiento a nivel de datos.** Reforzar la regla de negocio con *Row-Level
+  Security* (Postgres) o, según escala, un esquema por tenant; y un *repository*
+  que exija `tenant_id` en cada consulta para que ningún desarrollador lo olvide.
+- **Secretos y JWT.** Secreto en un gestor (Vault / AWS Secrets Manager) con
+  rotación; **refresh tokens** + expiración corta del access token.
+- **Generación de `reference`.** Hoy es `COUNT(*) + 1` (perfecto para la demo);
+  en producción usaría una secuencia/identidad por tenant para ser seguro ante
+  concurrencia y borrados.
+- **Robustez de la API.** *Rate-limiting*, validación de entrada con Zod,
+  paginación por cursor para datasets muy grandes y *logging* estructurado.
+- **Calidad.** Ampliar la cobertura de tests (unitarios de middlewares + e2e) e
+  integrarlos en CI antes de cada despliegue.
+- **Accesibilidad.** Ofrecer una preferencia para honrar `prefers-reduced-motion`
+  (el fondo animado se mantiene activo por decisión de identidad visual).
+
 ---
 
 <div align="center">

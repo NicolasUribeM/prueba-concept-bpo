@@ -17,7 +17,6 @@ export function LoadingScreen({ tenantName }: { tenantName?: string | null }) {
     >
       <div className="loading-orbit">
         <span className="loading-ring" />
-        <span className="loading-core" />
       </div>
       <motion.p
         className="loading-text"

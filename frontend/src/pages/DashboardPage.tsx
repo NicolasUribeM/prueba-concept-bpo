@@ -212,10 +212,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div
-          className={`table-wrap ${refrescando ? 'is-refetching' : ''}`}
-          data-lenis-prevent
-        >
+        <div className={`table-wrap ${refrescando ? 'is-refetching' : ''}`}>
           {/* Indicador de recarga suave: no quita los datos actuales, solo los
               atenúa y muestra una "bolita" mientras llega la nueva consulta. */}
           {refrescando && (

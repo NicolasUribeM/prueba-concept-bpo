@@ -1,0 +1,45 @@
+# =============================================================================
+#  docker-compose.yml — Base de datos MySQL para la prueba Multi-Tenant
+# -----------------------------------------------------------------------------
+#  Levanta un contenedor MySQL 8 con la base de datos ya inicializada.
+#  El script ./database/init.sql se ejecuta AUTOMÁTICAMENTE la primera vez
+#  que se crea el contenedor (carpeta /docker-entrypoint-initdb.d de la imagen),
+#  creando las tablas y cargando los datos de prueba (data dummy).
+#
+#  Uso:
+#    docker compose up -d        -> levanta la base de datos en segundo plano
+#    docker compose down         -> apaga el contenedor (conserva los datos)
+#    docker compose down -v      -> apaga y BORRA los datos (re-ejecuta init.sql)
+# =============================================================================
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: concept_bpo_mysql
+    restart: unless-stopped
+    environment:
+      # Credenciales de la base de datos. En un proyecto real irían en un .env
+      # fuera del control de versiones; aquí se dejan visibles por ser una prueba.
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: multitenant_db
+      MYSQL_USER: app_user
+      MYSQL_PASSWORD: app_pass
+    ports:
+      # Exponemos el 3306 del contenedor en el 3306 del host para que el
+      # backend (Node) se conecte a localhost:3306.
+      - "3306:3306"
+    volumes:
+      # Montamos el script de inicialización. Solo corre si el volumen de datos
+      # está vacío (primer arranque o tras un "down -v").
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # Volumen persistente para no perder los datos entre reinicios.
+      - concept_bpo_mysql_data:/var/lib/mysql
+    healthcheck:
+      # Permite saber cuándo MySQL está realmente listo para aceptar conexiones.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  concept_bpo_mysql_data:

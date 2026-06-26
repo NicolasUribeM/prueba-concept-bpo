@@ -10,6 +10,7 @@ import { api } from '../api/axios';
 export interface Record {
   id: number;
   tenant_id: number;
+  reference: string;
   title: string;
   description: string | null;
   status: 'ACTIVO' | 'PENDIENTE' | 'ARCHIVADO';
@@ -17,10 +18,22 @@ export interface Record {
   created_at: string;
 }
 
+type PorEstado = { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
+
 export interface Estadisticas {
   total: number;
   montoTotal: number;
-  porEstado: { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
+  porEstado: PorEstado;
+  montoPorEstado: PorEstado;
+  tendencia: { fecha: string; total: number }[];
+}
+
+export interface ParamsListado {
+  search: string;
+  sortBy: string;
+  sortDir: 'asc' | 'desc';
+  limit: number;
+  offset: number;
 }
 
 interface RecordsState {
@@ -47,10 +60,16 @@ const estadoInicial: RecordsState = {
  */
 export const fetchRecords = createAsyncThunk(
   'records/fetch',
-  async (args: { limit: number; offset: number }, { rejectWithValue }) => {
+  async (args: ParamsListado, { rejectWithValue }) => {
     try {
       const { data } = await api.get('/records', {
-        params: { limit: args.limit, offset: args.offset },
+        params: {
+          search: args.search,
+          sortBy: args.sortBy,
+          sortDir: args.sortDir,
+          limit: args.limit,
+          offset: args.offset,
+        },
       });
       return data as { data: Record[]; pagination: { total: number } };
     } catch (err: any) {
@@ -117,11 +136,9 @@ const recordsSlice = createSlice({
       .addCase(crearRecord.pending, (state) => {
         state.creando = true;
       })
-      .addCase(crearRecord.fulfilled, (state, action) => {
+      .addCase(crearRecord.fulfilled, (state) => {
         state.creando = false;
-        // Insertamos al inicio de la lista visible para feedback inmediato.
-        state.items.unshift(action.payload);
-        state.total += 1;
+        // La lista se recarga desde el servidor (paginación/orden vigentes).
       })
       .addCase(crearRecord.rejected, (state) => {
         state.creando = false;

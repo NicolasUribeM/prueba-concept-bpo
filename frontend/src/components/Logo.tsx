@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 
-const LOGO_SRC = '/logo-concept-bpo.svg';
+const LOGO_SRC = '/logo-concept-bpo.png';
 
 export function Logo() {
   const [falló, setFalló] = useState(false);

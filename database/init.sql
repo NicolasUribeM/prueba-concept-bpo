@@ -22,16 +22,13 @@ FLUSH PRIVILEGES;
 
 -- -----------------------------------------------------------------------------
 -- Limpieza previa (idempotencia): permite re-ejecutar el script sin errores.
--- El orden respeta las llaves foráneas (primero las hijas).
 -- -----------------------------------------------------------------------------
 DROP TABLE IF EXISTS records;
 DROP TABLE IF EXISTS users;
 DROP TABLE IF EXISTS tenants;
 
 -- -----------------------------------------------------------------------------
--- Tabla TENANTS: cada inquilino (empresa) del sistema multi-tenant.
--- El 'slug' es el identificador legible que viajará en la URL y en el
--- header X-Tenant-ID (ej: "tenant-a").
+-- Tabla TENANTS
 -- -----------------------------------------------------------------------------
 CREATE TABLE tenants (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -43,9 +40,7 @@ CREATE TABLE tenants (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- Tabla USERS: usuarios pertenecientes a un tenant. Sirve para simular el login
--- y emitir el JWT. El rol controla el acceso (ADMIN / USER).
--- El email es único POR tenant (dos tenants podrían tener el mismo correo).
+-- Tabla USERS
 -- -----------------------------------------------------------------------------
 CREATE TABLE users (
   id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -62,19 +57,22 @@ CREATE TABLE users (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- -----------------------------------------------------------------------------
--- Tabla RECORDS: registros de negocio. Es la tabla cuyo aislamiento se evalúa.
--- Toda fila pertenece OBLIGATORIAMENTE a un tenant (tenant_id NOT NULL).
--- El índice por tenant_id acelera el filtrado y la paginación.
+-- Tabla RECORDS
+-- 'reference' es el código de negocio legible (ej: REC-A-000123). El PK 'id'
+-- sigue siendo numérico interno para no romper relaciones; 'reference' es lo
+-- que se muestra al usuario, consecutivo por tenant.
 -- -----------------------------------------------------------------------------
 CREATE TABLE records (
   id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
   tenant_id   INT UNSIGNED NOT NULL,
+  reference   VARCHAR(20)  NOT NULL,
   title       VARCHAR(200) NOT NULL,
   description TEXT         NULL,
   status      ENUM('ACTIVO','PENDIENTE','ARCHIVADO') NOT NULL DEFAULT 'ACTIVO',
   amount      DECIMAL(12,2) NOT NULL DEFAULT 0.00,
   created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (id),
+  UNIQUE KEY uq_records_reference (reference),
   KEY idx_records_tenant (tenant_id),
   CONSTRAINT fk_records_tenant FOREIGN KEY (tenant_id)
     REFERENCES tenants(id) ON DELETE CASCADE
@@ -84,13 +82,11 @@ CREATE TABLE records (
 --  DATOS DE PRUEBA (DATA DUMMY)
 -- =============================================================================
 
--- Dos tenants para poder demostrar el aislamiento entre ellos.
 INSERT INTO tenants (id, slug, name) VALUES
   (1, 'tenant-a', 'Empresa Alfa S.A.'),
   (2, 'tenant-b', 'Comercial Beta Ltda.');
 
 -- Usuarios. Todos comparten la contraseña "password123" (hash bcrypt).
--- Cada tenant tiene un ADMIN y un USER para probar el control por roles.
 INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES
   (1, 'Admin Alfa', 'admin@alfa.com', '$2b$10$cRGQuV6nDKdQ5UbtWvnCX.T7w/.9OJfRtXZuD7iqnUuMBE7tu.zSi', 'ADMIN'),
   (1, 'Usuario Alfa', 'user@alfa.com',  '$2b$10$cRGQuV6nDKdQ5UbtWvnCX.T7w/.9OJfRtXZuD7iqnUuMBE7tu.zSi', 'USER'),
@@ -98,11 +94,12 @@ INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES
   (2, 'Usuario Beta','user@beta.com',  '$2b$10$cRGQuV6nDKdQ5UbtWvnCX.T7w/.9OJfRtXZuD7iqnUuMBE7tu.zSi', 'USER');
 
 -- -----------------------------------------------------------------------------
--- Generación masiva de records (500 por tenant) usando un CTE recursivo.
--- Sirve para demostrar en el frontend las técnicas de optimización de render
--- (debounce, useMemo, React.memo) con un volumen alto de datos.
+-- Generación masiva de records (500 por tenant) con CTE recursivo.
+--   · reference: REC-{letra del tenant}-{secuencia 6 dígitos}, consecutiva.
+--   · created_at: distribuido aleatoriamente en los últimos 30 días para que
+--     el gráfico de tendencia por fecha sea significativo.
 -- -----------------------------------------------------------------------------
-INSERT INTO records (tenant_id, title, description, status, amount)
+INSERT INTO records (tenant_id, reference, title, description, status, amount, created_at)
 WITH RECURSIVE numeros (n) AS (
   SELECT 1
   UNION ALL
@@ -110,17 +107,19 @@ WITH RECURSIVE numeros (n) AS (
 )
 SELECT
   t.id AS tenant_id,
-  CONCAT(t.slug, ' · Registro #', LPAD(n, 4, '0'))                 AS title,
+  CONCAT('REC-', UPPER(SUBSTRING(t.slug, 8)), '-', LPAD(n, 6, '0'))          AS reference,
+  CONCAT('Registro ', UPPER(SUBSTRING(t.slug, 8)), '-', LPAD(n, 4, '0'))     AS title,
   CONCAT('Registro de negocio de prueba número ', n, ' del tenant ', t.name) AS description,
-  ELT(1 + (n % 3), 'ACTIVO', 'PENDIENTE', 'ARCHIVADO')             AS status,
-  ROUND(RAND() * 10000, 2)                                         AS amount
+  ELT(1 + (n % 3), 'ACTIVO', 'PENDIENTE', 'ARCHIVADO')                       AS status,
+  ROUND(RAND() * 10000, 2)                                                   AS amount,
+  (NOW() - INTERVAL FLOOR(RAND() * 30) DAY - INTERVAL FLOOR(RAND() * 86400) SECOND) AS created_at
 FROM tenants t
 JOIN numeros;  -- producto cartesiano: cada número se cruza con cada tenant
 
 -- =============================================================================
 --  Verificación rápida (se imprime en los logs del contenedor al inicializar).
 -- =============================================================================
-SELECT slug AS tenant, COUNT(r.id) AS total_records
+SELECT t.slug AS tenant, COUNT(r.id) AS total_records, MIN(r.reference) AS primera_ref
 FROM tenants t
 LEFT JOIN records r ON r.tenant_id = t.id
 GROUP BY t.id, t.slug;

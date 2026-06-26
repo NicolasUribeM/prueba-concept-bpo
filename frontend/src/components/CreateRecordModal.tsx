@@ -7,15 +7,16 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
-import { crearRecord, fetchStats } from '../store/recordsSlice';
+import { crearRecord } from '../store/recordsSlice';
 import { useToast } from './Toast';
 
 interface Props {
   abierto: boolean;
   onCerrar: () => void;
+  onCreado: () => void;
 }
 
-export function CreateRecordModal({ abierto, onCerrar }: Props) {
+export function CreateRecordModal({ abierto, onCerrar, onCreado }: Props) {
   const dispatch = useAppDispatch();
   const toast = useToast();
   const creando = useAppSelector((s) => s.records.creando);
@@ -40,8 +41,8 @@ export function CreateRecordModal({ abierto, onCerrar }: Props) {
       })
     );
     if (crearRecord.fulfilled.match(res)) {
-      toast.success('Registro creado correctamente.');
-      dispatch(fetchStats()); // refrescamos métricas
+      toast.success(`Registro creado: ${res.payload.reference}`);
+      onCreado(); // recarga lista + métricas
       setTitle('');
       setAmount('');
       setDescription('');

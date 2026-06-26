@@ -45,12 +45,17 @@ Más allá de los requisitos, este proyecto incorpora:
   tarjetas con desenfoque, esquinas suaves y sombras en capas.
 - **🌌 Fondo "aurora" animado** — gradientes azules en movimiento + malla sutil,
   puro CSS para máximo rendimiento (respeta `prefers-reduced-motion`).
-- **📊 Tarjetas de métricas** — total de registros, monto acumulado y desglose
-  por estado, alimentadas por un endpoint de estadísticas filtrado por tenant.
+- **📊 Tarjetas de métricas + 4 gráficos** (Recharts) — distribución por estado
+  (dona), monto por estado, tendencia de registros en 30 días (área) y conteo
+  por estado; todo alimentado por un endpoint de estadísticas filtrado por tenant.
+- **🔢 IDs realistas** — código de referencia consecutivo por tenant
+  (`REC-A-000123`); un nuevo registro toma el siguiente de la secuencia.
+- **🔎 Tabla profesional** — búsqueda, **orden por cualquier columna** (▲▼) y
+  **paginación de 20**, todo *server-side* (sigue filtrado por tenant en backend).
 - **➕ Modal "Nuevo registro"** (solo ADMIN) — creación desde la UI con feedback
-  inmediato y actualización reactiva de métricas.
+  inmediato y actualización reactiva de métricas y gráficos.
 - **🔔 Sistema de toasts** y **💀 skeletons de carga** — feedback premium.
-- **🪄 Microinteracciones y transiciones** con Framer Motion.
+- **🪄 Microinteracciones y transiciones** suaves con Framer Motion.
 - **🔑 Credenciales de prueba en acordeón clickeable** — autocompletan el login.
 
 > ⚠️ **Regla de oro del diferencial:** nada de lo anterior modifica la lógica de
@@ -154,8 +159,8 @@ Toda petición protegida requiere las cabeceras:
 | Método | Ruta | Descripción | Acceso |
 |--------|------|-------------|--------|
 | POST | `/login` | Autentica y devuelve el JWT (requiere `X-Tenant-ID`) | Público |
-| GET | `/records?limit=&offset=` | Lista records del tenant (paginado) | ADMIN, USER |
-| GET | `/records/stats` | Métricas agregadas del tenant | ADMIN, USER |
+| GET | `/records?search=&sortBy=&sortDir=&limit=&offset=` | Lista records del tenant (búsqueda, orden y paginación) | ADMIN, USER |
+| GET | `/records/stats` | Métricas + tendencia agregadas del tenant | ADMIN, USER |
 | POST | `/records` | Crea un record en el tenant | Solo ADMIN |
 
 ### Ejemplo con curl

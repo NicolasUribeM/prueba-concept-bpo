@@ -7,10 +7,12 @@
  */
 import { RowDataPacket, ResultSetHeader } from 'mysql2';
 import { pool } from '../db/pool';
+import { Tenant } from '../types';
 
 export interface Record {
   id: number;
   tenant_id: number;
+  reference: string;
   title: string;
   description: string | null;
   status: 'ACTIVO' | 'PENDIENTE' | 'ARCHIVADO';
@@ -18,66 +20,112 @@ export interface Record {
   created_at: string;
 }
 
+export interface OpcionesListado {
+  search: string;
+  sortBy: string;
+  sortDir: string;
+  limit: number;
+  offset: number;
+}
+
 export interface ResultadoPaginado {
   data: Record[];
   pagination: { total: number; limit: number; offset: number };
 }
 
+// Listas blancas para construir el ORDER BY de forma segura (no se puede
+// parametrizar el nombre de columna, así que lo restringimos a estos valores).
+const COLUMNAS_ORDEN: { [clave: string]: string } = {
+  id: 'id',
+  reference: 'reference',
+  title: 'title',
+  status: 'status',
+  amount: 'amount',
+  created_at: 'created_at',
+};
+
 export const recordService = {
   /**
-   * Lista los records de UN tenant con paginación (limit / offset).
-   * Devuelve también el total para que el frontend pueda paginar.
+   * Lista los records de UN tenant con búsqueda, orden y paginación.
+   * Todo filtrado por tenant_id -> aislamiento garantizado.
    */
   async listarPorTenant(
     tenantId: number,
-    limit: number,
-    offset: number
+    opciones: OpcionesListado
   ): Promise<ResultadoPaginado> {
-    // Total de registros del tenant (para metadatos de paginación).
+    // Orden seguro (whitelist). Por defecto: id ascendente.
+    const columna = COLUMNAS_ORDEN[opciones.sortBy] ?? 'id';
+    const direccion = opciones.sortDir?.toLowerCase() === 'desc' ? 'DESC' : 'ASC';
+
+    // Filtro de búsqueda opcional (título, estado o referencia).
+    const condiciones: string[] = ['tenant_id = ?'];
+    const params: (string | number)[] = [tenantId];
+    if (opciones.search) {
+      condiciones.push('(title LIKE ? OR status LIKE ? OR reference LIKE ?)');
+      const like = `%${opciones.search}%`;
+      params.push(like, like, like);
+    }
+    const where = `WHERE ${condiciones.join(' AND ')}`;
+
+    // Total (respeta el filtro de búsqueda) para los metadatos de paginación.
     const [totalFilas] = await pool.query<RowDataPacket[]>(
-      'SELECT COUNT(*) AS total FROM records WHERE tenant_id = ?',
-      [tenantId]
+      `SELECT COUNT(*) AS total FROM records ${where}`,
+      params
     );
     const total = Number(totalFilas[0].total);
 
-    // Página solicitada. Filtramos por tenant_id -> aislamiento garantizado.
+    // Página solicitada.
     const [filas] = await pool.query<RowDataPacket[]>(
-      `SELECT id, tenant_id, title, description, status, amount, created_at
+      `SELECT id, tenant_id, reference, title, description, status, amount, created_at
        FROM records
-       WHERE tenant_id = ?
-       ORDER BY id ASC
+       ${where}
+       ORDER BY ${columna} ${direccion}
        LIMIT ? OFFSET ?`,
-      [tenantId, limit, offset]
+      [...params, opciones.limit, opciones.offset]
     );
 
     return {
       data: filas as Record[],
-      pagination: { total, limit, offset },
+      pagination: { total, limit: opciones.limit, offset: opciones.offset },
     };
   },
 
   /**
-   * Devuelve estadísticas agregadas del tenant: total de registros, conteo por
-   * estado y suma de montos. Todo filtrado por tenant_id (aislamiento intacto).
-   * Alimenta las tarjetas de métricas del dashboard.
+   * Estadísticas agregadas del tenant: total, monto, conteo por estado y
+   * tendencia diaria de los últimos 30 días. Alimenta métricas y gráficos.
    */
   async estadisticasPorTenant(tenantId: number): Promise<{
     total: number;
     montoTotal: number;
     porEstado: { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
+    montoPorEstado: { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
+    tendencia: { fecha: string; total: number }[];
   }> {
-    const [filas] = await pool.query<RowDataPacket[]>(
+    const [resumen] = await pool.query<RowDataPacket[]>(
       `SELECT
-         COUNT(*)                                            AS total,
-         COALESCE(SUM(amount), 0)                            AS montoTotal,
-         SUM(status = 'ACTIVO')                              AS activos,
-         SUM(status = 'PENDIENTE')                           AS pendientes,
-         SUM(status = 'ARCHIVADO')                           AS archivados
+         COUNT(*)                                  AS total,
+         COALESCE(SUM(amount), 0)                  AS montoTotal,
+         SUM(status = 'ACTIVO')                    AS activos,
+         SUM(status = 'PENDIENTE')                 AS pendientes,
+         SUM(status = 'ARCHIVADO')                 AS archivados,
+         COALESCE(SUM(IF(status='ACTIVO', amount, 0)), 0)    AS montoActivo,
+         COALESCE(SUM(IF(status='PENDIENTE', amount, 0)), 0) AS montoPendiente,
+         COALESCE(SUM(IF(status='ARCHIVADO', amount, 0)), 0) AS montoArchivado
        FROM records
        WHERE tenant_id = ?`,
       [tenantId]
     );
-    const f = filas[0];
+
+    const [tendenciaFilas] = await pool.query<RowDataPacket[]>(
+      `SELECT DATE(created_at) AS fecha, COUNT(*) AS total
+       FROM records
+       WHERE tenant_id = ? AND created_at >= (CURDATE() - INTERVAL 29 DAY)
+       GROUP BY DATE(created_at)
+       ORDER BY fecha ASC`,
+      [tenantId]
+    );
+
+    const f = resumen[0];
     return {
       total: Number(f.total),
       montoTotal: Number(f.montoTotal),
@@ -86,22 +134,42 @@ export const recordService = {
         PENDIENTE: Number(f.pendientes),
         ARCHIVADO: Number(f.archivados),
       },
+      montoPorEstado: {
+        ACTIVO: Number(f.montoActivo),
+        PENDIENTE: Number(f.montoPendiente),
+        ARCHIVADO: Number(f.montoArchivado),
+      },
+      tendencia: tendenciaFilas.map((t) => ({
+        fecha: String(t.fecha).slice(0, 10),
+        total: Number(t.total),
+      })),
     };
   },
 
   /**
    * Inserta un nuevo record vinculándolo OBLIGATORIAMENTE al tenant del
-   * servidor. El tenant_id jamás se toma del body de la petición.
+   * servidor. Genera una 'reference' consecutiva al total existente del tenant
+   * (ej: si hay 500 registros, el nuevo será REC-A-000501).
    */
   async crear(
-    tenantId: number,
+    tenant: Tenant,
     datos: { title: string; description?: string; status?: string; amount?: number }
   ): Promise<Record> {
+    // Secuencia consecutiva basada en la cantidad de registros del tenant.
+    const [cnt] = await pool.query<RowDataPacket[]>(
+      'SELECT COUNT(*) AS c FROM records WHERE tenant_id = ?',
+      [tenant.id]
+    );
+    const secuencia = Number(cnt[0].c) + 1;
+    const letra = tenant.slug.replace('tenant-', '').toUpperCase();
+    const reference = `REC-${letra}-${String(secuencia).padStart(6, '0')}`;
+
     const [resultado] = await pool.query<ResultSetHeader>(
-      `INSERT INTO records (tenant_id, title, description, status, amount)
-       VALUES (?, ?, ?, ?, ?)`,
+      `INSERT INTO records (tenant_id, reference, title, description, status, amount)
+       VALUES (?, ?, ?, ?, ?, ?)`,
       [
-        tenantId,
+        tenant.id,
+        reference,
         datos.title,
         datos.description ?? null,
         datos.status ?? 'ACTIVO',
@@ -109,10 +177,10 @@ export const recordService = {
       ]
     );
 
-    // Devolvemos el registro recién creado (también filtrado por tenant).
     const [filas] = await pool.query<RowDataPacket[]>(
-      'SELECT id, tenant_id, title, description, status, amount, created_at FROM records WHERE id = ? AND tenant_id = ?',
-      [resultado.insertId, tenantId]
+      `SELECT id, tenant_id, reference, title, description, status, amount, created_at
+       FROM records WHERE id = ? AND tenant_id = ?`,
+      [resultado.insertId, tenant.id]
     );
 
     return filas[0] as Record;

@@ -8,20 +8,25 @@ import { recordService } from '../services/record.service';
 
 export const recordController = {
   /**
-   * GET /api/v1/records?limit=&offset=
-   * Devuelve los records del tenant autenticado, paginados.
+   * GET /api/v1/records?search=&sortBy=&sortDir=&limit=&offset=
+   * Devuelve los records del tenant autenticado con búsqueda, orden y paginación.
    */
   async listar(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Saneamos la paginación: valores por defecto y límites razonables.
-      const limit = Math.min(Math.max(Number(req.query.limit) || 10, 1), 100);
+      const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 100);
       const offset = Math.max(Number(req.query.offset) || 0, 0);
+      const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+      const sortBy = typeof req.query.sortBy === 'string' ? req.query.sortBy : 'id';
+      const sortDir = typeof req.query.sortDir === 'string' ? req.query.sortDir : 'asc';
 
-      const resultado = await recordService.listarPorTenant(
-        req.tenant!.id,
+      const resultado = await recordService.listarPorTenant(req.tenant!.id, {
+        search,
+        sortBy,
+        sortDir,
         limit,
-        offset
-      );
+        offset,
+      });
 
       res.json(resultado);
     } catch (error) {
@@ -55,7 +60,7 @@ export const recordController = {
         return;
       }
 
-      const nuevo = await recordService.crear(req.tenant!.id, {
+      const nuevo = await recordService.crear(req.tenant!, {
         title,
         description,
         status,

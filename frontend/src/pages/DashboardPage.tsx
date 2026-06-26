@@ -1,13 +1,13 @@
 /**
- * DashboardPage — Vista principal del tenant: métricas + tabla de registros.
+ * DashboardPage — Vista principal del tenant: métricas + gráficos + tabla.
  * -----------------------------------------------------------------------------
- * Optimización de render (criterio de la prueba):
- *   - useDebounce: la búsqueda no filtra en cada tecla, solo al pausar.
- *   - useMemo: el filtrado solo se recalcula al cambiar datos o término.
- *   - React.memo (RecordRow): las filas no se re-renderizan sin necesidad.
+ * Búsqueda, orden y paginación son SERVER-SIDE (el backend filtra por tenant),
+ * lo que mantiene el aislamiento y escala a grandes volúmenes.
  *
- * Valor agregado: tarjetas de métricas, modal de creación (ADMIN), skeletons
- * de carga, toasts y micro-animaciones (Framer Motion).
+ * Optimización de render (criterio de la prueba):
+ *   - useDebounce: la búsqueda no dispara una petición en cada tecla.
+ *   - useMemo: cálculos derivados (páginas) no se rehacen en cada render.
+ *   - React.memo (RecordRow): las filas no se re-renderizan sin necesidad.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -18,9 +18,20 @@ import { fetchRecords, fetchStats } from '../store/recordsSlice';
 import { useDebounce } from '../hooks/useDebounce';
 import { RecordRow } from '../components/RecordRow';
 import { MetricCards } from '../components/MetricCards';
+import { Charts } from '../components/Charts';
 import { CreateRecordModal } from '../components/CreateRecordModal';
 import { SkeletonRow } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+
+const POR_PAGINA = 20;
+
+// Columnas ordenables: clave de UI -> campo que entiende el backend.
+const COLUMNAS = [
+  { campo: 'reference', etiqueta: 'ID', sort: 'id' },
+  { campo: 'title', etiqueta: 'Título', sort: 'title' },
+  { campo: 'status', etiqueta: 'Estado', sort: 'status' },
+  { campo: 'amount', etiqueta: 'Monto', sort: 'amount' },
+];
 
 export function DashboardPage() {
   const dispatch = useAppDispatch();
@@ -30,27 +41,65 @@ export function DashboardPage() {
   const { items, total, loading, stats } = useAppSelector((s) => s.records);
 
   const [busqueda, setBusqueda] = useState('');
+  const [sortBy, setSortBy] = useState('id');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [pagina, setPagina] = useState(0);
   const [modalAbierto, setModalAbierto] = useState(false);
-  const busquedaDebounced = useDebounce(busqueda, 300);
 
+  const busquedaDebounced = useDebounce(busqueda, 350);
   const esAdmin = user?.role === 'ADMIN';
 
-  // Cargamos página de registros + métricas al montar.
+  // Al cambiar la búsqueda, volvemos a la primera página.
   useEffect(() => {
-    dispatch(fetchRecords({ limit: 100, offset: 0 }));
+    setPagina(0);
+  }, [busquedaDebounced]);
+
+  // Carga de registros cuando cambian búsqueda, orden o página (server-side).
+  useEffect(() => {
+    dispatch(
+      fetchRecords({
+        search: busquedaDebounced.trim(),
+        sortBy,
+        sortDir,
+        limit: POR_PAGINA,
+        offset: pagina * POR_PAGINA,
+      })
+    );
+  }, [dispatch, busquedaDebounced, sortBy, sortDir, pagina]);
+
+  // Métricas/gráficos al montar.
+  useEffect(() => {
     dispatch(fetchStats());
   }, [dispatch]);
 
-  // useMemo: filtrado costoso que solo se recalcula al cambiar datos o término.
-  const registrosFiltrados = useMemo(() => {
-    const termino = busquedaDebounced.trim().toLowerCase();
-    if (!termino) return items;
-    return items.filter(
-      (r) =>
-        r.title.toLowerCase().includes(termino) ||
-        r.status.toLowerCase().includes(termino)
+  // useMemo: cálculo de paginación derivado del total.
+  const totalPaginas = useMemo(
+    () => Math.max(1, Math.ceil(total / POR_PAGINA)),
+    [total]
+  );
+
+  function ordenarPor(sort: string) {
+    if (sortBy === sort) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortBy(sort);
+      setSortDir('asc');
+    }
+    setPagina(0);
+  }
+
+  function recargar() {
+    dispatch(
+      fetchRecords({
+        search: busquedaDebounced.trim(),
+        sortBy,
+        sortDir,
+        limit: POR_PAGINA,
+        offset: pagina * POR_PAGINA,
+      })
     );
-  }, [items, busquedaDebounced]);
+    dispatch(fetchStats());
+  }
 
   function handleLogout() {
     dispatch(logout()); // reset total del store (anti data-bleeding)
@@ -61,9 +110,9 @@ export function DashboardPage() {
   return (
     <motion.div
       className="dashboard"
-      initial={{ opacity: 0, y: 12 }}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease: [0.2, 0.8, 0.2, 1] }}
+      transition={{ duration: 0.6, ease: [0.22, 0.61, 0.36, 1] }}
     >
       {/* ---- Topbar ---- */}
       <header className="topbar glass">
@@ -90,6 +139,9 @@ export function DashboardPage() {
       {/* ---- Métricas ---- */}
       <MetricCards stats={stats} />
 
+      {/* ---- Gráficos ---- */}
+      <Charts stats={stats} />
+
       {/* ---- Tabla ---- */}
       <section className="glass panel">
         <div className="panel-head">
@@ -97,15 +149,13 @@ export function DashboardPage() {
             <span className="search-icon">⌕</span>
             <input
               className="field search-field"
-              placeholder="Buscar por título o estado…"
+              placeholder="Buscar por ID, título o estado…"
               value={busqueda}
               onChange={(e) => setBusqueda(e.target.value)}
             />
           </div>
           <div className="panel-actions">
-            <span className="counter">
-              {registrosFiltrados.length} de {total} registros
-            </span>
+            <span className="counter">{total} registros</span>
             {esAdmin && (
               <button className="btn btn-sm" onClick={() => setModalAbierto(true)}>
                 + Nuevo registro
@@ -118,24 +168,51 @@ export function DashboardPage() {
           <table className="records-table">
             <thead>
               <tr>
-                <th className="col-id">ID</th>
-                <th>Título</th>
-                <th>Estado</th>
-                <th>Monto</th>
+                {COLUMNAS.map((c) => (
+                  <th
+                    key={c.campo}
+                    className={`sortable ${c.campo === 'reference' ? 'col-id' : ''}`}
+                    onClick={() => ordenarPor(c.sort)}
+                  >
+                    {c.etiqueta}
+                    <span className="sort-arrow">
+                      {sortBy === c.sort ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                    </span>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {loading
                 ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
-                : registrosFiltrados.map((r) => (
-                    <RecordRow key={r.id} record={r} />
-                  ))}
+                : items.map((r) => <RecordRow key={r.id} record={r} />)}
             </tbody>
           </table>
 
-          {!loading && registrosFiltrados.length === 0 && (
+          {!loading && items.length === 0 && (
             <p className="empty-state">Sin resultados para “{busqueda}”.</p>
           )}
+        </div>
+
+        {/* ---- Paginación ---- */}
+        <div className="pagination">
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={pagina === 0}
+            onClick={() => setPagina((p) => Math.max(0, p - 1))}
+          >
+            ← Anterior
+          </button>
+          <span className="page-info">
+            Página <strong>{pagina + 1}</strong> de {totalPaginas}
+          </span>
+          <button
+            className="btn btn-ghost btn-sm"
+            disabled={pagina + 1 >= totalPaginas}
+            onClick={() => setPagina((p) => Math.min(totalPaginas - 1, p + 1))}
+          >
+            Siguiente →
+          </button>
         </div>
       </section>
 
@@ -143,6 +220,7 @@ export function DashboardPage() {
       <CreateRecordModal
         abierto={modalAbierto}
         onCerrar={() => setModalAbierto(false)}
+        onCreado={recargar}
       />
     </motion.div>
   );

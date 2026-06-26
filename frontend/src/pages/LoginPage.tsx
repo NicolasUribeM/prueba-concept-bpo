@@ -52,17 +52,22 @@ export function LoginPage() {
 
   return (
     <div className="login-screen">
+      {/* Logo institucional FUERA de la tarjeta (membrete) */}
+      <motion.div
+        className="login-brand"
+        initial={{ opacity: 0, y: -16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: [0.22, 0.61, 0.36, 1] }}
+      >
+        <Logo />
+      </motion.div>
+
       <motion.div
         className="glass login-card"
-        initial={{ opacity: 0, y: 24, scale: 0.98 }}
+        initial={{ opacity: 0, y: 28, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ type: 'spring', stiffness: 220, damping: 26 }}
+        transition={{ type: 'spring', stiffness: 140, damping: 24, delay: 0.1 }}
       >
-        {/* Slot del logo de Concept BPO */}
-        <div className="login-logo">
-          <Logo />
-        </div>
-
         <div className="login-head">
           <h1>Acceso a la plataforma</h1>
           <p className="login-sub">Arquitectura Multi-Tenant segura</p>

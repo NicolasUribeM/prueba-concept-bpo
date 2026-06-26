@@ -33,7 +33,7 @@
 | Estado global | **Redux Toolkit** |
 | Routing | **react-router-dom v6** |
 | HTTP | **axios** (con interceptores) |
-| UI / Animación | **Framer Motion** + tipografía **Inter** |
+| UI / Animación | **Framer Motion** + **Recharts** + **Lenis** + tipografía **Inter** |
 
 ---
 
@@ -43,17 +43,19 @@ Más allá de los requisitos, este proyecto incorpora:
 
 - **🎨 Diseño glassmorphism estilo iOS** — paleta de azules sobre negros/grises,
   tarjetas con desenfoque, esquinas suaves y sombras en capas.
-- **🌌 Fondo "aurora" animado** — gradientes azules en movimiento + malla sutil,
-  puro CSS para máximo rendimiento (respeta `prefers-reduced-motion`).
+- **🌌 Fondo "aurora" animado** — orbes de gradiente azul que recorren la
+  pantalla con órbitas suaves; puro CSS para máximo rendimiento.
 - **📊 Tarjetas de métricas + 4 gráficos** (Recharts) — distribución por estado
-  (dona), monto por estado, tendencia de registros en 30 días (área) y conteo
-  por estado; todo alimentado por un endpoint de estadísticas filtrado por tenant.
+  (dona), monto por estado, tendencia de registros con filtro **30/60/120 días**
+  (área) y conteo por estado; alimentados por un endpoint de stats por tenant.
 - **🔢 IDs realistas** — código de referencia consecutivo por tenant
   (`REC-A-000123`); un nuevo registro toma el siguiente de la secuencia.
-- **🔎 Tabla profesional** — búsqueda, **orden por cualquier columna** (▲▼) y
-  **paginación de 20**, todo *server-side* (sigue filtrado por tenant en backend).
+- **🔎 Tabla profesional** — búsqueda, **orden por columna** (▲▼, por defecto
+  fecha descendente), **paginación de 20** y **columnas redimensionables**; todo
+  *server-side* (sigue filtrado por tenant en backend).
 - **➕ Modal "Nuevo registro"** (solo ADMIN) — creación desde la UI con feedback
   inmediato y actualización reactiva de métricas y gráficos.
+- **🖱️ Scroll suave (Lenis)** y **pantalla de carga** intermedia antes del panel.
 - **🔔 Sistema de toasts** y **💀 skeletons de carga** — feedback premium.
 - **🪄 Microinteracciones y transiciones** suaves con Framer Motion.
 - **🔑 Credenciales de prueba en acordeón clickeable** — autocompletan el login.
@@ -131,9 +133,9 @@ npm run dev
 ```
 Aplicación en **http://localhost:5173** (o el puerto que asigne Vite).
 
-> 💡 Para ver el logo real de Concept BPO en el login, coloca el archivo en
-> `frontend/public/logo-concept-bpo.svg`. Si no existe, se muestra un wordmark
-> elegante por defecto.
+> 💡 El logo de Concept BPO ya viene incluido en
+> `frontend/public/logo-concept-bpo.png`. Si se reemplaza y la imagen fallara,
+> se muestra un wordmark elegante por defecto.
 
 ---
 
@@ -233,8 +235,8 @@ Esta entrega es un *slice* funcional; en un entorno productivo evolucionaría as
   paginación por cursor para datasets muy grandes y *logging* estructurado.
 - **Calidad.** Ampliar la cobertura de tests (unitarios de middlewares + e2e) e
   integrarlos en CI antes de cada despliegue.
-- **Accesibilidad.** Ofrecer una preferencia para honrar `prefers-reduced-motion`
-  (el fondo animado se mantiene activo por decisión de identidad visual).
+- **Accesibilidad.** Ofrecer un ajuste para honrar `prefers-reduced-motion`
+  (hoy el fondo animado se mantiene activo por decisión de identidad visual).
 
 ---
 

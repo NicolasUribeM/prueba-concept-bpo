@@ -25,7 +25,7 @@ export function LoginPage() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const toast = useToast();
-  const { loading } = useAppSelector((s) => s.auth);
+  const { loading, error } = useAppSelector((s) => s.auth);
 
   const [tenantSlug, setTenantSlug] = useState('tenant-a');
   const [email, setEmail] = useState('admin@alfa.com');
@@ -38,9 +38,9 @@ export function LoginPage() {
     if (login.fulfilled.match(resultado)) {
       toast.success(`Bienvenido · ${resultado.payload.tenant.name}`);
       navigate(`/${resultado.payload.tenant.slug}/dashboard`);
-    } else {
-      toast.error((resultado.payload as string) ?? 'No se pudo iniciar sesión.');
     }
+    // En caso de error NO usamos toast: se muestra una alerta inline debajo del
+    // botón (state.auth.error), que es el patrón habitual de un formulario de login.
   }
 
   function autocompletar(c: (typeof CREDENCIALES)[number]) {
@@ -111,6 +111,21 @@ export function LoginPage() {
           <button className="btn login-btn" type="submit" disabled={loading}>
             {loading ? 'Ingresando…' : 'Ingresar'}
           </button>
+
+          {/* Alerta inline debajo del botón (patrón clásico de login) */}
+          <AnimatePresence>
+            {error && (
+              <motion.p
+                className="login-error"
+                initial={{ opacity: 0, y: -6, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -6, height: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                {error}
+              </motion.p>
+            )}
+          </AnimatePresence>
         </form>
 
         {/* Acordeón de credenciales de prueba */}

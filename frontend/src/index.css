@@ -288,12 +288,8 @@ h3 {
   100% { transform: translate(0, 0) scale(1); }
 }
 
-/* Respeta usuarios con preferencia de movimiento reducido */
-@media (prefers-reduced-motion: reduce) {
-  .aurora__blob {
-    animation: none;
-  }
-}
+/* Nota: el fondo aurora se mantiene animado intencionalmente como parte de la
+   identidad visual de la app, incluso con "reducir movimiento" del sistema. */
 
 /* =============================================================================
    Login
@@ -304,6 +300,7 @@ h3 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   padding: 24px;
   gap: 18px;
 }
@@ -312,16 +309,19 @@ h3 {
   max-width: 410px;
   padding: 34px 30px 26px;
 }
-/* Logo institucional FUERA de la tarjeta */
+/* Logo institucional FUERA de la tarjeta (membrete grande y separado) */
 .login-brand {
   display: flex;
   justify-content: center;
+  width: 100%;
+  margin-bottom: 28px;
 }
 .brand-logo {
-  max-height: 88px;
-  max-width: 340px;
+  /* ~2.5x respecto al tamaño anterior, proporcional a la pantalla */
+  height: clamp(150px, 24vh, 250px);
+  max-width: min(620px, 86vw);
   object-fit: contain;
-  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 10px 32px rgba(0, 0, 0, 0.5));
 }
 /* Fallback del logo (monograma + wordmark) */
 .brand-fallback {
@@ -686,33 +686,79 @@ h3 {
 
 /* ---- Tabla ---- */
 .table-wrap {
-  max-height: 60vh;
+  max-height: 62vh;
   overflow-y: auto;
+  overflow-x: auto;
   margin: 0 -20px;
   padding: 0 20px;
 }
 .records-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed; /* respeta los anchos del <colgroup> (redimensionables) */
   font-size: 14px;
 }
+/* Cabecera: fondo SÓLIDO (no transparente) y banda redondeada estilo iOS. */
 .records-table thead th {
   position: sticky;
   top: 0;
-  background: var(--glass-strong);
-  backdrop-filter: blur(12px);
+  background: #0e1828;
   text-align: left;
-  padding: 11px 12px;
+  padding: 12px 14px;
   color: var(--text-muted);
   font-weight: 600;
   font-size: 11.5px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  z-index: 1;
+  z-index: 2;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.records-table thead th:first-child {
+  border-top-left-radius: 14px;
+  border-bottom-left-radius: 14px;
+}
+.records-table thead th:last-child {
+  border-top-right-radius: 14px;
+  border-bottom-right-radius: 14px;
+}
+.th-label {
+  display: inline-flex;
+  align-items: center;
+}
+/* Manija de redimensionado en el borde derecho de cada cabecera. */
+.col-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  height: 100%;
+  width: 9px;
+  cursor: col-resize;
+  user-select: none;
+}
+.col-resizer::after {
+  content: '';
+  position: absolute;
+  top: 25%;
+  right: 4px;
+  height: 50%;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.2s ease;
+}
+.col-resizer:hover::after {
+  background: var(--blue-bright);
 }
 .records-table tbody td {
-  padding: 12px;
+  padding: 13px 14px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .records-table tbody tr {
   transition: background 0.25s ease;
@@ -721,8 +767,13 @@ h3 {
   background: rgba(59, 130, 246, 0.06);
 }
 .col-id {
-  width: 70px;
-  color: var(--text-faint);
+  color: var(--blue-bright);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.cell-date {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .amount {
   font-variant-numeric: tabular-nums;
@@ -812,11 +863,17 @@ textarea.field {
   display: flex;
   flex-direction: column;
 }
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  gap: 10px;
+}
 .chart-title {
   font-size: 13.5px;
   font-weight: 600;
   color: var(--text-muted);
-  margin-bottom: 10px;
 }
 .chart-body {
   flex: 1;
@@ -826,6 +883,7 @@ textarea.field {
   justify-content: center;
   gap: 16px;
   margin-top: 6px;
+  flex-wrap: wrap;
 }
 .legend-item {
   display: flex;
@@ -834,10 +892,63 @@ textarea.field {
   font-size: 12px;
   color: var(--text-muted);
 }
+.legend-item strong {
+  color: var(--text);
+}
 .legend-dot {
   width: 9px;
   height: 9px;
   border-radius: 50%;
+}
+
+/* Selector de rango (30/60/120 días) */
+.range-switch {
+  display: flex;
+  gap: 4px;
+  background: rgba(5, 8, 16, 0.5);
+  border: 1px solid var(--glass-border);
+  border-radius: 10px;
+  padding: 3px;
+}
+.range-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-faint);
+  font-family: var(--font);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: background 0.25s ease, color 0.25s ease;
+}
+.range-btn:hover {
+  color: var(--text-muted);
+}
+.range-btn-active {
+  background: rgba(59, 130, 246, 0.18);
+  color: var(--blue-bright);
+}
+
+/* Tooltip personalizado de los gráficos */
+.chart-tip {
+  background: rgba(10, 16, 30, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 9px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+.chart-tip-label {
+  font-size: 12px;
+  font-weight: 600;
+}
+.chart-tip-value {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
 @media (max-width: 820px) {
   .charts-grid {

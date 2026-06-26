@@ -83,9 +83,11 @@ export const fetchRecords = createAsyncThunk(
 /** Trae las estadísticas agregadas del tenant para las tarjetas de métricas. */
 export const fetchStats = createAsyncThunk(
   'records/stats',
-  async (_: void, { rejectWithValue }) => {
+  async (dias: number | undefined, { rejectWithValue }) => {
     try {
-      const { data } = await api.get('/records/stats');
+      const { data } = await api.get('/records/stats', {
+        params: { days: dias ?? 30 },
+      });
       return data as Estadisticas;
     } catch (err: any) {
       return rejectWithValue(err.response?.data?.error ?? 'Error al cargar métricas.');

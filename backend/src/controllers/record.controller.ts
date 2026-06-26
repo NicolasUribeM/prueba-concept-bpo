@@ -40,7 +40,8 @@ export const recordController = {
    */
   async estadisticas(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
-      const stats = await recordService.estadisticasPorTenant(req.tenant!.id);
+      const dias = Number(req.query.days) || 30;
+      const stats = await recordService.estadisticasPorTenant(req.tenant!.id, dias);
       res.json(stats);
     } catch (error) {
       next(error);

@@ -92,9 +92,13 @@ export const recordService = {
 
   /**
    * Estadísticas agregadas del tenant: total, monto, conteo por estado y
-   * tendencia diaria de los últimos 30 días. Alimenta métricas y gráficos.
+   * tendencia diaria en el rango de días indicado (30/60/120).
+   * Alimenta métricas y gráficos.
    */
-  async estadisticasPorTenant(tenantId: number): Promise<{
+  async estadisticasPorTenant(
+    tenantId: number,
+    dias = 30
+  ): Promise<{
     total: number;
     montoTotal: number;
     porEstado: { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
@@ -116,13 +120,17 @@ export const recordService = {
       [tenantId]
     );
 
+    // Saneamos el rango a los valores permitidos.
+    const rango = [30, 60, 120].includes(dias) ? dias : 30;
+    // DATE_FORMAT devuelve un string 'YYYY-MM-DD' (mysql2 entrega DATE como
+    // objeto Date; forzamos string para que el frontend lo formatee bien).
     const [tendenciaFilas] = await pool.query<RowDataPacket[]>(
-      `SELECT DATE(created_at) AS fecha, COUNT(*) AS total
+      `SELECT DATE_FORMAT(created_at, '%Y-%m-%d') AS fecha, COUNT(*) AS total
        FROM records
-       WHERE tenant_id = ? AND created_at >= (CURDATE() - INTERVAL 29 DAY)
-       GROUP BY DATE(created_at)
+       WHERE tenant_id = ? AND created_at >= (CURDATE() - INTERVAL ? DAY)
+       GROUP BY DATE_FORMAT(created_at, '%Y-%m-%d')
        ORDER BY fecha ASC`,
-      [tenantId]
+      [tenantId, rango - 1]
     );
 
     const f = resumen[0];

@@ -96,8 +96,14 @@ INSERT INTO users (tenant_id, name, email, password_hash, role) VALUES
 -- -----------------------------------------------------------------------------
 -- Generación masiva de records (500 por tenant) con CTE recursivo.
 --   · reference: REC-{letra del tenant}-{secuencia 6 dígitos}, consecutiva.
---   · created_at: distribuido aleatoriamente en los últimos 30 días para que
---     el gráfico de tendencia por fecha sea significativo.
+--   · status: distribución SESGADA (~50% ACTIVO, ~39% PENDIENTE, ~11% ARCHIVADO)
+--     para que los gráficos no se vean planos.
+--   · amount: RANGO por estado (ACTIVO mayor, ARCHIVADO menor) -> barras de
+--     "monto por estado" claramente diferentes.
+--   · created_at: distribuido en 120 días con SESGO hacia lo reciente
+--     (POW(rnd, 2.2)) -> el gráfico de tendencia muestra una curva de crecimiento.
+-- Se usa una tabla derivada con columnas RAND() por fila para que cada registro
+-- tenga su propia aleatoriedad (estado, monto y fecha coherentes).
 -- -----------------------------------------------------------------------------
 INSERT INTO records (tenant_id, reference, title, description, status, amount, created_at)
 WITH RECURSIVE numeros (n) AS (
@@ -106,15 +112,35 @@ WITH RECURSIVE numeros (n) AS (
   SELECT n + 1 FROM numeros WHERE n < 500
 )
 SELECT
-  t.id AS tenant_id,
-  CONCAT('REC-', UPPER(SUBSTRING(t.slug, 8)), '-', LPAD(n, 6, '0'))          AS reference,
-  CONCAT('Registro ', UPPER(SUBSTRING(t.slug, 8)), '-', LPAD(n, 4, '0'))     AS title,
-  CONCAT('Registro de negocio de prueba número ', n, ' del tenant ', t.name) AS description,
-  ELT(1 + (n % 3), 'ACTIVO', 'PENDIENTE', 'ARCHIVADO')                       AS status,
-  ROUND(RAND() * 10000, 2)                                                   AS amount,
-  (NOW() - INTERVAL FLOOR(RAND() * 30) DAY - INTERVAL FLOOR(RAND() * 86400) SECOND) AS created_at
-FROM tenants t
-JOIN numeros;  -- producto cartesiano: cada número se cruza con cada tenant
+  base.tenant_id,
+  CONCAT('REC-', base.letra, '-', LPAD(base.n, 6, '0'))                       AS reference,
+  CONCAT('Registro ', base.letra, '-', LPAD(base.n, 4, '0'))                  AS title,
+  CONCAT('Registro de negocio de prueba número ', base.n, ' del tenant ', base.name) AS description,
+  base.status,
+  CASE base.status
+    WHEN 'ACTIVO'    THEN ROUND(2000 + base.ra * 12000, 2)
+    WHEN 'PENDIENTE' THEN ROUND(500  + base.ra * 5500, 2)
+    ELSE                  ROUND(100  + base.ra * 2400, 2)
+  END                                                                          AS amount,
+  base.created_at
+FROM (
+  SELECT
+    t.id                          AS tenant_id,
+    UPPER(SUBSTRING(t.slug, 8))   AS letra,
+    t.name                        AS name,
+    nums.n                        AS n,
+    CASE
+      WHEN RAND() < 0.50 THEN 'ACTIVO'
+      WHEN RAND() < 0.78 THEN 'PENDIENTE'
+      ELSE 'ARCHIVADO'
+    END                           AS status,
+    RAND()                        AS ra,
+    (NOW()
+      - INTERVAL FLOOR(POW(RAND(), 2.2) * 120) DAY
+      - INTERVAL FLOOR(RAND() * 86400) SECOND)  AS created_at
+  FROM tenants t
+  JOIN numeros nums
+) AS base;
 
 -- =============================================================================
 --  Verificación rápida (se imprime en los logs del contenedor al inicializar).

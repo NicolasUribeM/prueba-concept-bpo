@@ -749,11 +749,13 @@ h3 {
 }
 
 /* ---- Tabla ---- */
-/* Sin scroll interno: la tabla fluye en la página y el scroll suave (Lenis)
-   global la recorre de forma amigable. Solo conservamos overflow-x para las
-   columnas redimensionables. */
+/* Contenedor con scroll propio (nativo) para que el header quede fijo y las
+   columnas sean redimensionables. El scroll interno usa data-lenis-prevent
+   para no entrar en conflicto con el scroll suave global de la página. */
 .table-wrap {
   position: relative;
+  max-height: 62vh;
+  overflow-y: auto;
   overflow-x: auto;
   margin: 0 -20px;
   padding: 0 20px;
@@ -789,8 +791,12 @@ h3 {
   table-layout: fixed; /* respeta los anchos del <colgroup> (redimensionables) */
   font-size: 14px;
 }
-/* Cabecera: fondo SÓLIDO (no transparente) y banda redondeada estilo iOS. */
+/* Cabecera: fondo SÓLIDO (no transparente) y banda redondeada estilo iOS.
+   position: sticky mantiene el header fijo Y sirve de ancla para los
+   redimensionadores de columna (que se posicionan absolute dentro del th). */
 .records-table thead th {
+  position: sticky;
+  top: 0;
   background: #0e1828;
   text-align: left;
   padding: 12px 14px;

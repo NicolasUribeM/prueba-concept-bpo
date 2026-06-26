@@ -1,11 +1,23 @@
-# Prueba Técnica — Arquitectura Multi-Tenant (Full-Stack)
+<div align="center">
 
-Implementación de un **Slice Vertical** que demuestra una arquitectura
-**Multi-Tenant** con aislamiento estricto de datos entre inquilinos (tenants),
-autenticación con JWT, control por roles y optimización de render en el frontend.
+# 🏢 Arquitectura Multi-Tenant · Full-Stack
 
-> Prueba para **Concept BPO**. El objetivo no es un sistema completo, sino
-> demostrar el dominio de los conceptos clave de seguridad y arquitectura.
+### Slice Vertical con aislamiento estricto de datos, JWT, control de roles y una capa visual estilo iOS
+
+**Desarrollado por [Nicolás Uribe](mailto:nicolasuribe753@gmail.com)** · Prueba técnica para **Concept BPO**
+
+</div>
+
+---
+
+> Este proyecto no busca ser un sistema completo, sino **demostrar el dominio de
+> los conceptos clave** de una arquitectura multi-tenant: aislamiento de datos
+> gobernado por el servidor, autenticación, control por roles y optimización de
+> render — todo envuelto en una experiencia de usuario cuidada y moderna.
+>
+> Construí la base cumpliendo cada criterio de evaluación y, sobre esa base
+> sólida y sin alterar su lógica, añadí una capa de diseño y funcionalidades que
+> le dan identidad de producto real. — *N.U.*
 
 ---
 
@@ -21,6 +33,29 @@ autenticación con JWT, control por roles y optimización de render en el fronte
 | Estado global | **Redux Toolkit** |
 | Routing | **react-router-dom v6** |
 | HTTP | **axios** (con interceptores) |
+| UI / Animación | **Framer Motion** + tipografía **Inter** |
+
+---
+
+## ✨ Toque diferencial (valor agregado)
+
+Más allá de los requisitos, este proyecto incorpora:
+
+- **🎨 Diseño glassmorphism estilo iOS** — paleta de azules sobre negros/grises,
+  tarjetas con desenfoque, esquinas suaves y sombras en capas.
+- **🌌 Fondo "aurora" animado** — gradientes azules en movimiento + malla sutil,
+  puro CSS para máximo rendimiento (respeta `prefers-reduced-motion`).
+- **📊 Tarjetas de métricas** — total de registros, monto acumulado y desglose
+  por estado, alimentadas por un endpoint de estadísticas filtrado por tenant.
+- **➕ Modal "Nuevo registro"** (solo ADMIN) — creación desde la UI con feedback
+  inmediato y actualización reactiva de métricas.
+- **🔔 Sistema de toasts** y **💀 skeletons de carga** — feedback premium.
+- **🪄 Microinteracciones y transiciones** con Framer Motion.
+- **🔑 Credenciales de prueba en acordeón clickeable** — autocompletan el login.
+
+> ⚠️ **Regla de oro del diferencial:** nada de lo anterior modifica la lógica de
+> seguridad ni los criterios evaluados. Es una capa **aditiva** sobre un núcleo
+> que ya funcionaba al 100 %.
 
 ---
 
@@ -47,7 +82,9 @@ prueba-concept-bpo/
         ├── api/              # Instancia axios + interceptores
         ├── store/            # Redux: authSlice, recordsSlice, store
         ├── hooks/            # useDebounce, hooks tipados de Redux
-        ├── components/       # ProtectedRoute, RecordRow (memoizado)
+        ├── components/       # AnimatedBackground, Logo, Toast, Skeleton,
+        │                     # MetricCards, CreateRecordModal, RecordRow,
+        │                     # ProtectedRoute
         ├── pages/            # LoginPage, DashboardPage
         └── App.tsx           # Routing dinámico
 ```
@@ -89,6 +126,10 @@ npm run dev
 ```
 Aplicación en **http://localhost:5173** (o el puerto que asigne Vite).
 
+> 💡 Para ver el logo real de Concept BPO en el login, coloca el archivo en
+> `frontend/public/logo-concept-bpo.svg`. Si no existe, se muestra un wordmark
+> elegante por defecto.
+
 ---
 
 ## 🔑 Credenciales de prueba
@@ -114,6 +155,7 @@ Toda petición protegida requiere las cabeceras:
 |--------|------|-------------|--------|
 | POST | `/login` | Autentica y devuelve el JWT (requiere `X-Tenant-ID`) | Público |
 | GET | `/records?limit=&offset=` | Lista records del tenant (paginado) | ADMIN, USER |
+| GET | `/records/stats` | Métricas agregadas del tenant | ADMIN, USER |
 | POST | `/records` | Crea un record en el tenant | Solo ADMIN |
 
 ### Ejemplo con curl
@@ -138,7 +180,8 @@ curl http://localhost:4000/api/v1/records?limit=5 \
 - **Aislamiento por doble verificación.** `identifyTenant` valida el tenant
   contra la BD; `checkAuth` exige además que el tenant del JWT coincida con el
   tenant solicitado. Un token de `tenant-a` contra `tenant-b` devuelve **403**.
-- **Control por roles.** La creación de records está restringida a `ADMIN`.
+- **Control por roles.** La creación de records está restringida a `ADMIN`
+  (en backend con `requireRole` y en la UI ocultando la acción).
 - **Anti "data bleeding".** Al cerrar sesión se resetea TODO el estado de Redux,
   evitando que queden datos residuales de un tenant anterior.
 - **DRY.** La lógica repetitiva de red y seguridad se centraliza en
@@ -158,5 +201,18 @@ curl http://localhost:4000/api/v1/records?limit=5 \
 | Token de tenant A contra header de tenant B | **403** |
 | Petición sin token | 401 |
 | Header `X-Tenant-ID` inexistente | 404 |
-| USER intenta `POST /records` | 403 |
+| USER intenta `POST /records` | 403 (y la UI ni muestra la opción) |
 | Inyectar `tenant_id` ajeno en el body | Ignorado (se usa el del servidor) |
+
+---
+
+<div align="center">
+
+### 👤 Sobre el autor
+
+Desarrollado con dedicación por **Nicolás Uribe**
+*Apasionado por construir software que funcione impecable y se vea aún mejor.*
+
+📧 nicolasuribe753@gmail.com
+
+</div>

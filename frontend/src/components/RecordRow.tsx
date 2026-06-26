@@ -9,14 +9,16 @@ import type { Record } from '../store/recordsSlice';
 function RecordRowBase({ record }: { record: Record }) {
   return (
     <tr>
-      <td>{record.id}</td>
+      <td className="col-id">{record.id}</td>
       <td>{record.title}</td>
       <td>
         <span className={`badge badge-${record.status.toLowerCase()}`}>
           {record.status}
         </span>
       </td>
-      <td className="amount">${Number(record.amount).toLocaleString('es-CO')}</td>
+      <td className="amount">
+        ${Number(record.amount).toLocaleString('es-CO', { minimumFractionDigits: 2 })}
+      </td>
     </tr>
   );
 }

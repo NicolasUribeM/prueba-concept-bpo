@@ -30,6 +30,19 @@ export const recordController = {
   },
 
   /**
+   * GET /api/v1/records/stats
+   * Métricas agregadas del tenant autenticado (total, por estado, monto).
+   */
+  async estadisticas(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const stats = await recordService.estadisticasPorTenant(req.tenant!.id);
+      res.json(stats);
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  /**
    * POST /api/v1/records
    * Crea un record vinculado al tenant autenticado.
    */

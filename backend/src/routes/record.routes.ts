@@ -16,6 +16,9 @@ const router = Router();
 
 router.get('/', identifyTenant, checkAuth, recordController.listar);
 
+// Estadísticas del tenant (alimenta las tarjetas de métricas del dashboard).
+router.get('/stats', identifyTenant, checkAuth, recordController.estadisticas);
+
 router.post(
   '/',
   identifyTenant,

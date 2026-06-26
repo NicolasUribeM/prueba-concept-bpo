@@ -17,11 +17,19 @@ export interface Record {
   created_at: string;
 }
 
+export interface Estadisticas {
+  total: number;
+  montoTotal: number;
+  porEstado: { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
+}
+
 interface RecordsState {
   items: Record[];
   total: number;
   loading: boolean;
   error: string | null;
+  stats: Estadisticas | null;
+  creando: boolean;
 }
 
 const estadoInicial: RecordsState = {
@@ -29,6 +37,8 @@ const estadoInicial: RecordsState = {
   total: 0,
   loading: false,
   error: null,
+  stats: null,
+  creando: false,
 };
 
 /**
@@ -51,6 +61,35 @@ export const fetchRecords = createAsyncThunk(
   }
 );
 
+/** Trae las estadísticas agregadas del tenant para las tarjetas de métricas. */
+export const fetchStats = createAsyncThunk(
+  'records/stats',
+  async (_: void, { rejectWithValue }) => {
+    try {
+      const { data } = await api.get('/records/stats');
+      return data as Estadisticas;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.error ?? 'Error al cargar métricas.');
+    }
+  }
+);
+
+/** Crea un nuevo record (solo ADMIN). El tenant lo impone el backend. */
+export const crearRecord = createAsyncThunk(
+  'records/crear',
+  async (
+    datos: { title: string; description?: string; status?: string; amount?: number },
+    { rejectWithValue }
+  ) => {
+    try {
+      const { data } = await api.post('/records', datos);
+      return data as Record;
+    } catch (err: any) {
+      return rejectWithValue(err.response?.data?.error ?? 'No se pudo crear el registro.');
+    }
+  }
+);
+
 const recordsSlice = createSlice({
   name: 'records',
   initialState: estadoInicial,
@@ -69,6 +108,23 @@ const recordsSlice = createSlice({
       .addCase(fetchRecords.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      // --- Estadísticas ---
+      .addCase(fetchStats.fulfilled, (state, action) => {
+        state.stats = action.payload;
+      })
+      // --- Creación de record ---
+      .addCase(crearRecord.pending, (state) => {
+        state.creando = true;
+      })
+      .addCase(crearRecord.fulfilled, (state, action) => {
+        state.creando = false;
+        // Insertamos al inicio de la lista visible para feedback inmediato.
+        state.items.unshift(action.payload);
+        state.total += 1;
+      })
+      .addCase(crearRecord.rejected, (state) => {
+        state.creando = false;
       });
   },
 });

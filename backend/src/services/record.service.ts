@@ -57,6 +57,39 @@ export const recordService = {
   },
 
   /**
+   * Devuelve estadísticas agregadas del tenant: total de registros, conteo por
+   * estado y suma de montos. Todo filtrado por tenant_id (aislamiento intacto).
+   * Alimenta las tarjetas de métricas del dashboard.
+   */
+  async estadisticasPorTenant(tenantId: number): Promise<{
+    total: number;
+    montoTotal: number;
+    porEstado: { ACTIVO: number; PENDIENTE: number; ARCHIVADO: number };
+  }> {
+    const [filas] = await pool.query<RowDataPacket[]>(
+      `SELECT
+         COUNT(*)                                            AS total,
+         COALESCE(SUM(amount), 0)                            AS montoTotal,
+         SUM(status = 'ACTIVO')                              AS activos,
+         SUM(status = 'PENDIENTE')                           AS pendientes,
+         SUM(status = 'ARCHIVADO')                           AS archivados
+       FROM records
+       WHERE tenant_id = ?`,
+      [tenantId]
+    );
+    const f = filas[0];
+    return {
+      total: Number(f.total),
+      montoTotal: Number(f.montoTotal),
+      porEstado: {
+        ACTIVO: Number(f.activos),
+        PENDIENTE: Number(f.pendientes),
+        ARCHIVADO: Number(f.archivados),
+      },
+    };
+  },
+
+  /**
    * Inserta un nuevo record vinculándolo OBLIGATORIAMENTE al tenant del
    * servidor. El tenant_id jamás se toma del body de la petición.
    */

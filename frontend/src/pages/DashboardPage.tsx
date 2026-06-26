@@ -12,7 +12,7 @@
  * Extras de UX: columnas redimensionables (arrastrar la cabecera) y animaciones
  * suaves al ordenar y paginar.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -51,6 +51,7 @@ export function DashboardPage() {
   const [pagina, setPagina] = useState(0);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [anchos, setAnchos] = useState<number[]>(COLUMNAS.map((c) => c.w));
+  const colRefs = useRef<(HTMLTableColElement | null)[]>([]);
 
   const busquedaDebounced = useDebounce(busqueda, 350);
   const esAdmin = user?.role === 'ADMIN';
@@ -91,23 +92,29 @@ export function DashboardPage() {
   }
 
   // Redimensionado de columnas: arrastrar el borde derecho de la cabecera.
+  // Durante el arrastre actualizamos el ancho DIRECTAMENTE en el DOM (sin
+  // re-render de React en cada pixel) para que sea totalmente fluido; el valor
+  // final se "confirma" al soltar.
   function iniciarResize(e: React.MouseEvent, idx: number) {
     e.preventDefault();
     e.stopPropagation();
     const startX = e.clientX;
-    const startW = anchos[idx];
+    const startW = colRefs.current[idx]?.offsetWidth ?? anchos[idx];
+    let ultimo = startW;
     function mover(ev: MouseEvent) {
-      const nuevo = Math.max(80, startW + (ev.clientX - startX));
-      setAnchos((prev) => {
-        const copia = [...prev];
-        copia[idx] = nuevo;
-        return copia;
-      });
+      ultimo = Math.max(80, startW + (ev.clientX - startX));
+      const col = colRefs.current[idx];
+      if (col) col.style.width = `${ultimo}px`;
     }
     function soltar() {
       window.removeEventListener('mousemove', mover);
       window.removeEventListener('mouseup', soltar);
       document.body.style.cursor = '';
+      setAnchos((prev) => {
+        const copia = [...prev];
+        copia[idx] = ultimo;
+        return copia;
+      });
     }
     window.addEventListener('mousemove', mover);
     window.addEventListener('mouseup', soltar);
@@ -133,7 +140,10 @@ export function DashboardPage() {
     navigate('/login');
   }
 
-  const firmaAnim = `${sortBy}-${sortDir}-${pagina}-${busquedaDebounced}`;
+  // Distingue la carga inicial (muestra skeletons) de un refetch por
+  // orden/paginación/búsqueda (mantiene los datos y solo muestra el spinner).
+  const cargaInicial = loading && items.length === 0;
+  const refrescando = loading && items.length > 0;
 
   return (
     <motion.div
@@ -192,11 +202,24 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="table-wrap">
+        <div className={`table-wrap ${refrescando ? 'is-refetching' : ''}`}>
+          {/* Indicador de recarga suave: no quita los datos actuales, solo los
+              atenúa y muestra una "bolita" mientras llega la nueva consulta. */}
+          {refrescando && (
+            <div className="table-spinner">
+              <span className="spinner" />
+            </div>
+          )}
           <table className="records-table">
             <colgroup>
               {COLUMNAS.map((c, i) => (
-                <col key={c.campo} style={{ width: anchos[i] }} />
+                <col
+                  key={c.campo}
+                  ref={(el) => {
+                    colRefs.current[i] = el;
+                  }}
+                  style={{ width: anchos[i] }}
+                />
               ))}
             </colgroup>
             <thead>
@@ -224,16 +247,11 @@ export function DashboardPage() {
                 ))}
               </tr>
             </thead>
-            <motion.tbody
-              key={firmaAnim}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, ease: [0.22, 0.61, 0.36, 1] }}
-            >
-              {loading
+            <tbody>
+              {cargaInicial
                 ? Array.from({ length: 8 }).map((_, i) => <SkeletonRow key={i} />)
                 : items.map((r) => <RecordRow key={r.id} record={r} />)}
-            </motion.tbody>
+            </tbody>
           </table>
 
           {!loading && items.length === 0 && (

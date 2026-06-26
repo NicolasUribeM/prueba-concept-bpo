@@ -1,16 +1,34 @@
 /**
  * AnimatedBackground — Fondo "aurora" animado.
- * Varios orbes de gradiente azul con recorridos amplios y lentos que se mezclan
- * como una aurora boreal sobre un fondo casi negro. Puramente CSS (ver
- * index.css) para máximo rendimiento. Se monta fijo detrás del contenido.
+ * Orbes de gradiente azul que recorren TODA la pantalla con trayectorias
+ * amplias y distintas. En cada carga arrancan en una posición y fase aleatoria
+ * (posición inicial + animation-delay negativo), de modo que nunca se ven igual
+ * ni se apilan siempre en el mismo punto. Puramente CSS para máximo rendimiento.
  */
+import { useMemo } from 'react';
+
 export function AnimatedBackground() {
+  // Posición inicial y desfase aleatorios por orbe (estables durante el montaje).
+  const orbes = useMemo(
+    () =>
+      [1, 2, 3, 4].map((i) => ({
+        i,
+        left: Math.round(Math.random() * 80 - 10), // -10% .. 70%
+        top: Math.round(Math.random() * 80 - 10),
+        delay: -Math.round(Math.random() * 40), // arranca en una fase distinta
+      })),
+    []
+  );
+
   return (
     <div className="aurora" aria-hidden="true">
-      <div className="aurora__blob aurora__blob--1" />
-      <div className="aurora__blob aurora__blob--2" />
-      <div className="aurora__blob aurora__blob--3" />
-      <div className="aurora__blob aurora__blob--4" />
+      {orbes.map((o) => (
+        <div
+          key={o.i}
+          className={`aurora__blob aurora__blob--${o.i}`}
+          style={{ left: `${o.left}%`, top: `${o.top}%`, animationDelay: `${o.delay}s` }}
+        />
+      ))}
     </div>
   );
 }

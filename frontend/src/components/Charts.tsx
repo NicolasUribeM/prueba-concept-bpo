@@ -6,7 +6,7 @@
  *   4. Barras: conteo de registros por estado (con valor visible en la barra).
  * Tooltips personalizados y legibles. Estilo glass + paleta azul.
  */
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { motion } from 'framer-motion';
 import {
   PieChart, Pie, Cell,
@@ -95,7 +95,7 @@ function ChartCard({
   );
 }
 
-export function Charts({ stats }: { stats: Estadisticas | null }) {
+function ChartsBase({ stats }: { stats: Estadisticas | null }) {
   const dispatch = useAppDispatch();
   const [rango, setRango] = useState(30);
 
@@ -216,3 +216,7 @@ export function Charts({ stats }: { stats: Estadisticas | null }) {
     </div>
   );
 }
+
+// Memoizado: solo se redibuja cuando cambia `stats`, no al ordenar/paginar
+// /redimensionar la tabla (Recharts es costoso de renderizar).
+export const Charts = memo(ChartsBase);

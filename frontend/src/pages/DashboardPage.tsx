@@ -47,8 +47,9 @@ export function DashboardPage() {
   const { items, total, loading, stats } = useAppSelector((s) => s.records);
 
   const [busqueda, setBusqueda] = useState('');
-  const [sortBy, setSortBy] = useState('id');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  // Por defecto la tabla se ordena por fecha, de la más reciente a la más antigua.
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [pagina, setPagina] = useState(0);
   const [modalAbierto, setModalAbierto] = useState(false);
   const [anchos, setAnchos] = useState<number[]>(COLUMNAS.map((c) => c.w));

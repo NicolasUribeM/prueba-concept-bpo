@@ -246,5 +246,6 @@ Desarrollado con dedicación por **Nicolás Uribe**
 *Apasionado por construir software que funcione impecable y se vea aún mejor.*
 
 📧 nicolasuribe753@gmail.com
+🌐 https://nicolas-uribe-web.vercel.app/
 
 </div>
